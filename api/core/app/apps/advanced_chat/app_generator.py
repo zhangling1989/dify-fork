@@ -358,7 +358,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # new thread
-        worker_thread = threading.Thread(
+        worker_thread = threading.Thread( ## zhangling  生成消息的线程  启动了 AdvancedChatAppRunner run()方法
             target=self._generate_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),  # type: ignore
@@ -373,7 +373,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        response = self._handle_advanced_chat_response(
+        response = self._handle_advanced_chat_response( ## zhangling  监听消息，把消息放到response里
             application_generate_entity=application_generate_entity,
             workflow=workflow,
             queue_manager=queue_manager,
@@ -481,7 +481,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         try:
-            return generate_task_pipeline.process()
+            return generate_task_pipeline.process() ## zhangling  process()方法里会调用 listen()监听消息的方法
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()

@@ -175,12 +175,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
         )
 
-        generator = workflow_entry.run(
+        generator = workflow_entry.run( ## zhangling 返回事件列表 每个节点都有事件
             callbacks=workflow_callbacks,
         )
 
         for event in generator:
-            self._handle_event(workflow_entry, event)
+            self._handle_event(workflow_entry, event) ## zhangling dify-fork/api/core/app/apps/workflow_app_runner.py 中的_handle_event方法 发送事件
 
     def handle_input_moderation(
         self,

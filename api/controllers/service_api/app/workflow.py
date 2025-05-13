@@ -66,7 +66,7 @@ class WorkflowRunDetailApi(Resource):
         return workflow_run
 
 
-class WorkflowRunApi(Resource):
+class WorkflowRunApi(Resource): ## zhangling  api入口
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         """

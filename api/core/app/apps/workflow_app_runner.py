@@ -495,7 +495,7 @@ class WorkflowBasedAppRunner(AppRunner):
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
-            self._publish_event(
+            self._publish_event( ## zhangling 发送生成文本内容
                 QueueTextChunkEvent(
                     text=event.chunk_content,
                     from_variable_selector=event.from_variable_selector,
