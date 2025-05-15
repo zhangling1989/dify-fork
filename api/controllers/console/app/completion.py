@@ -1,4 +1,9 @@
 import logging
+## zhangling code start
+import core.config as config
+from core.app.apps.base_app_queue_manager import AppQueueManager
+import itertools
+## zhangling code end
 
 import flask_login
 from flask_restful import Resource, reqparse
@@ -116,12 +121,15 @@ class ChatMessageApi(Resource):
         args["auto_generate_name"] = False
 
         account = flask_login.current_user
+        ## zhangling code start
+        logging.info(f"{config.zhangling_log_controller} 请求内容 {args}")
 
         try:
-            response = AppGenerateService.generate(
+            response = AppGenerateService.generate( ## zhangling  返回 RateLimitGenerator
                 app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
-
+            logging.info(f"{config.zhangling_log_controller} AppGenerateService.generate 完成，准备响应 task_id: {response.task_id}")
+            ## zhangling code end
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -157,10 +165,84 @@ class ChatMessageStopApi(Resource):
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
+        ## 停止生成
+        rate_limit_generator = AppQueueManager.appQueueManagerDict.pop(task_id + "-rate_limit_generator")
+        rate_limit_generator.pause()
+        generator = AppQueueManager.appQueueManagerDict.get(task_id + "-generator")
+        AppQueueManager.appQueueManagerGenterator = generator
+        gen, paused_gen = itertools.tee(generator)
+        AppQueueManager.add_appQueueManagerDict(task_id + "-generator-copy", paused_gen)
         return {"result": "success"}, 200
+
+
+## zhangling code start
+class ChatMessagePauseApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def post(self, app_model, task_id):
+        logging.info(f"{config.zhangling_log_controller} pause {task_id}")
+        account = flask_login.current_user
+
+        AppQueueManager.set_pause_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+
+        return {"result": "success"}, 200
+
+
+class ChatMessageContinueApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def post(self, app_model, task_id):
+        logging.info(f"{config.zhangling_log_controller} continue {task_id}")
+        account = flask_login.current_user
+        args = AppQueueManager.appQueueManagerDict.pop(task_id+"-args")
+        logging.info(f"{config.zhangling_log_controller} 请求内容 {args}")
+        streaming = True
+        args["task_id"] = task_id
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+            )
+            AppQueueManager.set_continue_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+            return helper.compact_generate_response(response)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except services.errors.app_model_config.AppModelConfigBrokenError:
+            logging.exception("App model config broken.")
+            raise AppUnavailableError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+
+
+
+
+## zhangling code end
 
 
 api.add_resource(CompletionMessageApi, "/apps/<uuid:app_id>/completion-messages")
 api.add_resource(CompletionMessageStopApi, "/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
 api.add_resource(ChatMessageApi, "/apps/<uuid:app_id>/chat-messages")
 api.add_resource(ChatMessageStopApi, "/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
+## zhangling code start
+api.add_resource(ChatMessagePauseApi, "/apps/<uuid:app_id>/chat-messages/<string:task_id>/pause")
+api.add_resource(ChatMessageContinueApi, "/apps/<uuid:app_id>/chat-messages/<string:task_id>/continue")
+## zhangling code end

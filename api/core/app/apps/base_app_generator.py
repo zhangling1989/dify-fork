@@ -151,7 +151,7 @@ class BaseAppGenerator:
             return generator
         else:
 
-            def gen():
+            def gen(): ## zhangling !!!!!!!!!!!! 生成器
                 for message in generator:
                     if isinstance(message, Mapping | dict):
                         yield f"data: {json.dumps(message)}\n\n"

@@ -1,5 +1,11 @@
 from collections.abc import Generator, Mapping
 from typing import Any, Union
+## zhangling code start
+import logging
+import core.config as config
+from core.app.apps.base_app_queue_manager import AppQueueManager
+import uuid
+## zhangling code end
 
 from openai._exceptions import RateLimitError
 
@@ -87,9 +93,14 @@ class AppGenerateService:
                 )
             elif app_model.mode == AppMode.ADVANCED_CHAT.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
-                return rate_limit.generate(
-                    AdvancedChatAppGenerator.convert_to_event_stream(
-                        AdvancedChatAppGenerator().generate(
+                ## zhangling code start
+                if "task_id" not in args and AppQueueManager.appQueueManagerGenterator == None:
+                    task_id = str(uuid.uuid4())
+                    AppQueueManager.task_id = task_id
+                    gen = AdvancedChatAppGenerator()
+                    gen.task_id = task_id
+                    adGen = AdvancedChatAppGenerator.convert_to_event_stream(  # zhangling 遍历下面的生成器，本身自己也是生成器
+                        gen.generate( # zhangling 是一个生成器
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -97,9 +108,31 @@ class AppGenerateService:
                             invoke_from=invoke_from,
                             streaming=streaming,
                         ),
-                    ),
-                    request_id=request_id,
-                )
+                    )
+                    logging.info(f"{config.zhangling_log_core}  添加生成器  task_id: {gen.task_id}")
+                    AppQueueManager.add_appQueueManagerDict(gen.task_id + "-args", args)
+                    rate_limit_generator = rate_limit.generate(
+                        adGen,request_id=request_id,
+                    )
+                    AppQueueManager.add_appQueueManagerDict(gen.task_id + "-generator", rate_limit_generator.generator)
+                    AppQueueManager.add_appQueueManagerDict(gen.task_id + "-rate_limit_generator", rate_limit_generator)
+                    rate_limit_generator.task_id = gen.task_id
+                    return rate_limit_generator
+                else:
+                    task_id = None
+                    if "task_id" not in args:
+                        task_id = AppQueueManager.task_id
+                    else:
+                        task_id = args["task_id"]
+                    gen = AppQueueManager.appQueueManagerDict.pop(task_id + "-generator-copy")
+                    ## zhangling 开启生成
+                    logging.info(f"{config.zhangling_log_core}  重用生成器  task_id: {task_id}")
+                    adGen = AdvancedChatAppGenerator.convert_to_event_stream(gen)
+                    rate_limit_generator = rate_limit.generate(
+                        adGen, request_id=request_id,
+                    )
+                    return rate_limit_generator
+            ## zhangling code end
             elif app_model.mode == AppMode.WORKFLOW.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
                 return rate_limit.generate(

@@ -1,5 +1,8 @@
 import json
 import logging
+## zhangling code start
+import core.config as config
+## zhangling code end
 import time
 from collections.abc import Generator, Mapping
 from threading import Thread
@@ -76,8 +79,13 @@ from models.workflow import (
     WorkflowRunStatus,
 )
 
+from ComfyUI.config import zhangling_info
+
 logger = logging.getLogger(__name__)
 
+## zhangling code start
+from core.app.apps.base_app_queue_manager import AppQueueManager
+## zhangling code end
 
 class AdvancedChatAppGenerateTaskPipeline:
     """
@@ -682,6 +690,13 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
+                ## zhangling code start
+                logging.info(f"{config.zhangling_log_core} event {event}")
+                if AppQueueManager.is_paused(self._application_generate_entity.task_id):
+                    AppQueueManager.saveMessage(self._application_generate_entity.task_id,self._task_state.answer) ## 保存消息
+                    AppQueueManager.add_appQueueManagerDict(self._application_generate_entity.task_id,self._base_task_pipeline._queue_manager) ## 保存queue
+                    AppQueueManager.add_appQueueManagerDict(self._application_generate_entity.task_id+"-event",event)
+                ## zhangling code end
                 yield self._message_cycle_manager._message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
@@ -725,6 +740,9 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._conversation_name_generate_thread.join()
 
     def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
+        ## zhangling code start
+        AppQueueManager.pop_appQueueManagerDict(self._application_generate_entity.task_id) ## 删除queue
+        ## zhangling code end
         message = self._get_message(session=session)
         message.answer = self._task_state.answer
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at

@@ -154,8 +154,34 @@ class ChatStopApi(Resource):
 
         return {"result": "success"}, 200
 
+## zhangling code start
+class ChatPauseApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, task_id):
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        AppQueueManager.set_pause_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+
+        return {"result": "success"}, 200
+class ChatContinueApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, task_id):
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        AppQueueManager.set_continue_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+
+        return {"result": "success"}, 200
+## zhangling code end
 
 api.add_resource(CompletionApi, "/completion-messages")
 api.add_resource(CompletionStopApi, "/completion-messages/<string:task_id>/stop")
 api.add_resource(ChatApi, "/chat-messages")
 api.add_resource(ChatStopApi, "/chat-messages/<string:task_id>/stop")
+## zhangling code start
+api.add_resource(ChatPauseApi, "/chat-messages/<string:task_id>/pause")
+api.add_resource(ChatContinueApi, "/chat-messages/<string:task_id>/continue")
+## zhangling code end

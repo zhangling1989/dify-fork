@@ -1,4 +1,8 @@
 import logging
+## zhangling code start
+import core.config as config
+from core.app.apps.base_app_queue_manager import AppQueueManager
+## zhangling code end
 import time
 import uuid
 from collections.abc import Generator, Mapping
@@ -105,6 +109,7 @@ class RateLimitGenerator:
         self.generator = generator
         self.request_id = request_id
         self.closed = False
+        self.paused = False
 
     def __iter__(self):
         return self
@@ -113,7 +118,11 @@ class RateLimitGenerator:
         if self.closed:
             raise StopIteration
         try:
-            return next(self.generator)
+            if self.paused:
+                #logging.info(f"{config.zhangling_log_core} pauesd ...")
+                return bytes("paused", "utf-8")
+            else:
+                return next(self.generator)
         except Exception:
             self.close()
             raise
@@ -124,3 +133,7 @@ class RateLimitGenerator:
             self.rate_limit.exit(self.request_id)
             if self.generator is not None and hasattr(self.generator, "close"):
                 self.generator.close()
+    def pause(self):
+        if not self.paused:
+            self.paused = True
+            self.rate_limit.exit(self.request_id)

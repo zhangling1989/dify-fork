@@ -3,6 +3,9 @@ import time
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Optional
+## zhangling code start
+import logging
+## zhangling code end
 
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -14,6 +17,9 @@ from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueuePingEvent,
     QueueStopEvent,
+## zhangling code start
+    QueueTextChunkEvent,
+## zhangling code end
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import redis_client
@@ -25,6 +31,12 @@ class PublishFrom(Enum):
 
 
 class AppQueueManager:
+    ## zhangling code start
+    # 定义一个类变量 保存暂停的queue
+    appQueueManagerDict = dict()
+    appQueueManagerGenterator = None # test 用
+    task_id = None  # test 用
+    ## zhangling code end
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom) -> None:
         if not user_id:
             raise ValueError("user is required")
@@ -155,6 +167,123 @@ class AppQueueManager:
         :return:
         """
         return f"generate_task_stopped:{task_id}"
+
+    ## zhangling code start
+    @classmethod
+    def set_pause_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
+        """
+        Set task stop flag
+        :return:
+        """
+        result: Optional[Any] = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        if result is None:
+            return
+
+        user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        if result.decode("utf-8") != f"{user_prefix}-{user_id}":
+            return
+
+        paused_cache_key = cls._generate_paused_cache_key(task_id)
+        redis_client.setex(paused_cache_key, 600, 1)
+
+    def _is_paused(self) -> bool:
+        """
+        Check if task is stopped
+        :return:
+        """
+        paused_cache_key = AppQueueManager._generate_paused_cache_key(self._task_id)
+        result = redis_client.get(paused_cache_key)
+        if result is not None:
+            return True
+
+        return False
+
+    @classmethod
+    def is_paused(cls,task_id: str) -> bool:
+        """
+        Check if task is stopped
+        :return:
+        """
+        paused_cache_key = AppQueueManager._generate_paused_cache_key(task_id)
+        result = redis_client.get(paused_cache_key)
+        if result is not None:
+            return True
+
+        return False
+
+    @classmethod
+    def saveMessage(cls, task_id: str,message: str):
+        """
+        Check if task is stopped
+        :return:
+        """
+        generate_paused_message_cache_key = AppQueueManager._generate_paused_message_cache_key(task_id)
+        result = redis_client.setex(generate_paused_message_cache_key,600,message) ## zhangling  600秒过期
+        return result
+
+
+    @classmethod
+    def _generate_paused_cache_key(cls, task_id: str) -> str:
+        """
+        Generate stopped cache key
+        :param task_id: task id
+        :return:
+        """
+        return f"generate_task_paused:{task_id}"
+
+    @classmethod
+    def _generate_paused_message_cache_key(cls, task_id: str) -> str:
+        """
+        Generate stopped cache key
+        :param task_id: task id
+        :return:
+        """
+        return f"generate_task_paused_message:{task_id}"
+
+    @classmethod
+    def set_continue_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
+        """
+        Set task stop flag
+        :return:
+        """
+        result: Optional[Any] = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        if result is None:
+            return
+
+        user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        if result.decode("utf-8") != f"{user_prefix}-{user_id}":
+            return
+
+        paused_cache_key = cls._generate_paused_cache_key(task_id)
+
+        if paused_cache_key is not None:
+            generate_paused_message_cache_key = AppQueueManager._generate_paused_message_cache_key(task_id)
+            text = redis_client.get(generate_paused_message_cache_key)
+            logging.info(f"{text}")
+            if text is not None:
+                if task_id in cls.appQueueManagerDict:
+                    queue = cls.appQueueManagerDict.pop(task_id)
+                    event = cls.appQueueManagerDict.pop(task_id + "-event")
+                    queue.publish(  ## zhangling 发送生成文本内容
+                        QueueTextChunkEvent(
+                            text=text,
+                            from_variable_selector=event.from_variable_selector,
+                            in_iteration_id=event.in_iteration_id,
+                            in_loop_id=event.in_loop_id,
+                        ),PublishFrom.APPLICATION_MANAGER
+                    )
+            redis_client.setex(paused_cache_key, 10, 0)
+
+    @classmethod
+    def add_appQueueManagerDict(cls,task_id: str,queue=None):
+        cls.appQueueManagerDict.setdefault(task_id,queue)
+
+    @classmethod
+    def pop_appQueueManagerDict(cls, task_id: str):
+        if task_id in cls.appQueueManagerDict:
+            cls.appQueueManagerDict.pop(task_id)
+
+    ## zhangling code end
 
     def _check_for_sqlalchemy_models(self, data: Any):
         # from entity to dict or list

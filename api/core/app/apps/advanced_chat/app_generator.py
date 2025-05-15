@@ -1,5 +1,9 @@
 import contextvars
 import logging
+## zhangling code start
+import core.config as config
+from core.app.apps.base_app_queue_manager import AppQueueManager
+## zhangling code end
 import threading
 import uuid
 from collections.abc import Generator, Mapping
@@ -73,7 +77,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
+    ## zhangling code start
+    def settask_id(self, task_id):
+        self.task_id = task_id
 
+    def gettask_id(self):
+        self.task_id
+
+    ## zhangling code end
     def generate(
         self,
         app_model: App,
@@ -139,8 +150,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
+        ## zhangling code start
+        task_id = None
+        if hasattr(self,"task_id"):
+            logging.info(f"{config.zhangling_log_core}  hasattr task_id")
+            task_id = self.task_id
+        else:
+            task_id = str(uuid.uuid4())
         application_generate_entity = AdvancedChatAppGenerateEntity(
-            task_id=str(uuid.uuid4()),
+            task_id=task_id,
+            ## zhangling code end
             app_config=app_config,
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
