@@ -79,8 +79,6 @@ from models.workflow import (
     WorkflowRunStatus,
 )
 
-from ComfyUI.config import zhangling_info
-
 logger = logging.getLogger(__name__)
 
 ## zhangling code start
@@ -158,6 +156,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         # start generate conversation name thread
+        logging.info(f"{config.zhangling_log_core} process")
         self._conversation_name_generate_thread = self._message_cycle_manager._generate_conversation_name(
             conversation_id=self._conversation_id, query=self._application_generate_entity.query
         )
@@ -299,7 +298,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueWorkflowStartedEvent):
                 # override graph runtime state
                 graph_runtime_state = event.graph_runtime_state
-
+                logging.info(f"{config.zhangling_log_core} QueueWorkflowStartedEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
                     workflow_run = self._workflow_cycle_manager._handle_workflow_run_start(
@@ -325,7 +324,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             ):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueNodeRetryEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -345,7 +344,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueNodeStartedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.debug(f"{config.zhangling_log_core} QueueNodeStartedEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -369,7 +368,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     self._recorded_files.extend(
                         self._workflow_cycle_manager._fetch_files_from_node_outputs(event.outputs or {})
                     )
-
+                logging.debug(f"{config.zhangling_log_core} QueueNodeSucceededEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
                         event=event
@@ -394,7 +393,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
                     event=event
                 )
-
+                logging.info(f"{config.zhangling_log_core} {event}")
                 node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
@@ -406,7 +405,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueParallelBranchRunStartedEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -424,7 +423,10 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                if isinstance(event, QueueParallelBranchRunSucceededEvent):
+                    logging.info(f"{config.zhangling_log_core} QueueParallelBranchRunSucceededEvent")
+                else:
+                    logging.info(f"{config.zhangling_log_core} {event}")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -442,7 +444,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueIterationStartEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueIterationStartEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -474,7 +476,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueIterationCompletedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueIterationCompletedEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -490,7 +492,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueLoopStartEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueLoopStartEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -522,7 +524,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueLoopCompletedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueLoopCompletedEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._get_workflow_run(
                         session=session, workflow_run_id=self._workflow_run_id
@@ -541,7 +543,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 if not graph_runtime_state:
                     raise ValueError("workflow run not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueWorkflowSucceededEvent")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._handle_workflow_run_success(
                         session=session,
@@ -595,7 +597,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("workflow run not initialized.")
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} {event}")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
                         session=session,
@@ -622,6 +624,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 yield self._base_task_pipeline._error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent):
+                logging.info(f"{config.zhangling_log_core} QueueStopEvent")
                 if self._workflow_run_id and graph_runtime_state:
                     with Session(db.engine, expire_on_commit=False) as session:
                         workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
@@ -677,6 +680,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     session.commit()
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
+                #logging.info(f"{config.zhangling_log_core} {delta_text}")
                 if delta_text is None:
                     continue
 
@@ -708,7 +712,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
-
+                logging.info(f"{config.zhangling_log_core} QueueAdvancedChatMessageEndEvent")
                 output_moderation_answer = self._base_task_pipeline._handle_output_moderation_when_task_finished(
                     self._task_state.answer
                 )

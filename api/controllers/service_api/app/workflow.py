@@ -1,5 +1,7 @@
 import logging
-
+## zhangling code start
+import core.config as config
+## zhangling code end
 from dateutil.parser import isoparse
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
@@ -83,7 +85,7 @@ class WorkflowRunApi(Resource): ## zhangling  api入口
         args = parser.parse_args()
 
         streaming = args.get("response_mode") == "streaming"
-
+        logging.info(f"{config.zhangling_log_controller} {args}")
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
@@ -91,19 +93,25 @@ class WorkflowRunApi(Resource): ## zhangling  api入口
 
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
+            logging.exception(f"{config.zhangling_log_controller} ProviderTokenNotInitError {ex}")
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
+            logging.exception(f"{config.zhangling_log_controller} QuotaExceededError")
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
+            logging.exception(f"{config.zhangling_log_controller} ModelCurrentlyNotSupportError")
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeRateLimitError as ex:
+            logging.exception(f"{config.zhangling_log_controller} InvokeRateLimitError {ex}")
             raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
+            logging.exception(f"{config.zhangling_log_controller} InvokeError {e}")
             raise CompletionRequestError(e.description)
         except ValueError as e:
+            logging.exception(f"{config.zhangling_log_controller} ValueError {e}")
             raise e
-        except Exception:
-            logging.exception("internal server error.")
+        except Exception as e:
+            logging.exception(f"{config.zhangling_log_controller} internal server error {e}")
             raise InternalServerError()
 
 

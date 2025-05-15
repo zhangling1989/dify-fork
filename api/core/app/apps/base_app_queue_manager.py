@@ -6,7 +6,6 @@ from typing import Any, Optional
 ## zhangling code start
 import logging
 ## zhangling code end
-
 from sqlalchemy.orm import DeclarativeMeta
 
 from configs import dify_config

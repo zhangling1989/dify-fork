@@ -1,5 +1,8 @@
 import json
 import logging
+## zhangling code start
+import core.config as config
+## zhangling code end
 from typing import cast
 
 from flask import abort, request
@@ -163,7 +166,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
 
         args = parser.parse_args()
-
+        logging.info(f"{config.zhangling_log_controller} {args}")
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
@@ -171,15 +174,19 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
+            logging.exception(f"{config.zhangling_log_controller} ConversationNotExistsError")
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
+            logging.exception(f"{config.zhangling_log_controller} ConversationCompletedError")
             raise ConversationCompletedError()
         except InvokeRateLimitError as ex:
+            logging.exception(f"{config.zhangling_log_controller} InvokeRateLimitError {ex}")
             raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
+            logging.exception(f"{config.zhangling_log_controller} ValueError {e}")
             raise e
-        except Exception:
-            logging.exception("internal server error.")
+        except Exception as e:
+            logging.exception(f"{config.zhangling_log_controller} internal server error {e}")
             raise InternalServerError()
 
 
@@ -202,7 +209,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
-
+        logging.info(f"{config.zhangling_log_controller} {args}")
         try:
             response = AppGenerateService.generate_single_iteration(
                 app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
@@ -210,13 +217,16 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
+            logging.exception(f"{config.zhangling_log_controller} ConversationNotExistsError")
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
+            logging.exception(f"{config.zhangling_log_controller} ConversationCompletedError")
             raise ConversationCompletedError()
         except ValueError as e:
+            logging.exception(f"{config.zhangling_log_controller} ValueError {e}")
             raise e
-        except Exception:
-            logging.exception("internal server error.")
+        except Exception as e:
+            logging.exception(f"{config.zhangling_log_controller} internal server error {e}")
             raise InternalServerError()
 
 
@@ -351,7 +361,7 @@ class DraftWorkflowRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
-
+        logging.info(f"{config.zhangling_log_controller} {args}")
         try:
             response = AppGenerateService.generate(
                 app_model=app_model,
@@ -363,6 +373,7 @@ class DraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
+            logging.exception(f"{config.zhangling_log_controller} InvokeRateLimitError {ex}")
             raise InvokeRateLimitHttpError(ex.description)
 
 

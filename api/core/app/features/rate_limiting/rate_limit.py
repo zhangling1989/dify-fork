@@ -1,7 +1,7 @@
 import logging
 ## zhangling code start
 import core.config as config
-from core.app.apps.base_app_queue_manager import AppQueueManager
+import json
 ## zhangling code end
 import time
 import uuid
@@ -119,8 +119,11 @@ class RateLimitGenerator:
             raise StopIteration
         try:
             if self.paused:
-                #logging.info(f"{config.zhangling_log_core} pauesd ...")
-                return bytes("paused", "utf-8")
+                # logging.info(f"{config.zhangling_log_core} pauesd ...")
+                message = {
+                    "test": 1
+                }
+                return bytes(f"data: {json.dumps(message)}\n\n", "utf-8")
             else:
                 return next(self.generator)
         except Exception:

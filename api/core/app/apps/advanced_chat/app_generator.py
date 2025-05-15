@@ -77,14 +77,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
-    ## zhangling code start
-    def settask_id(self, task_id):
-        self.task_id = task_id
-
-    def gettask_id(self):
-        self.task_id
-
-    ## zhangling code end
     def generate(
         self,
         app_model: App,
@@ -152,7 +144,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # init application generate entity
         ## zhangling code start
         task_id = None
-        if hasattr(self,"task_id"):
+        if hasattr(self, "task_id"):
             logging.info(f"{config.zhangling_log_core}  hasattr task_id")
             task_id = self.task_id
         else:

@@ -6,7 +6,6 @@ import core.config as config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 import uuid
 ## zhangling code end
-
 from openai._exceptions import RateLimitError
 
 from configs import dify_config
@@ -117,6 +116,7 @@ class AppGenerateService:
                     AppQueueManager.add_appQueueManagerDict(gen.task_id + "-generator", rate_limit_generator.generator)
                     AppQueueManager.add_appQueueManagerDict(gen.task_id + "-rate_limit_generator", rate_limit_generator)
                     rate_limit_generator.task_id = gen.task_id
+                    logging.info(f"{config.zhangling_log_core}  添加 rate_limit_generator 生成器  task_id: {gen.task_id}")
                     return rate_limit_generator
                 else:
                     task_id = None
@@ -124,8 +124,9 @@ class AppGenerateService:
                         task_id = AppQueueManager.task_id
                     else:
                         task_id = args["task_id"]
-                    gen = AppQueueManager.appQueueManagerDict.pop(task_id + "-generator-copy")
-                    ## zhangling 开启生成
+                    gen = AppQueueManager.appQueueManagerDict.get(task_id + "-generator-copy")
+                    rate_limit_generator = AppQueueManager.appQueueManagerDict.pop(task_id + "-rate_limit_generator")
+                    # rate_limit_generator.paused = False
                     logging.info(f"{config.zhangling_log_core}  重用生成器  task_id: {task_id}")
                     adGen = AdvancedChatAppGenerator.convert_to_event_stream(gen)
                     rate_limit_generator = rate_limit.generate(

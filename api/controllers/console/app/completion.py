@@ -1,7 +1,6 @@
 import logging
 ## zhangling code start
 import core.config as config
-from core.app.apps.base_app_queue_manager import AppQueueManager
 import itertools
 ## zhangling code end
 
@@ -163,10 +162,10 @@ class ChatMessageStopApi(Resource):
     def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
-
+        # AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppQueueManager.set_pause_flag(task_id, InvokeFrom.DEBUGGER, account.id)
         ## 停止生成
-        rate_limit_generator = AppQueueManager.appQueueManagerDict.pop(task_id + "-rate_limit_generator")
+        rate_limit_generator = AppQueueManager.appQueueManagerDict.get(task_id + "-rate_limit_generator")
         rate_limit_generator.pause()
         generator = AppQueueManager.appQueueManagerDict.get(task_id + "-generator")
         AppQueueManager.appQueueManagerGenterator = generator
@@ -198,7 +197,7 @@ class ChatMessageContinueApi(Resource):
     def post(self, app_model, task_id):
         logging.info(f"{config.zhangling_log_controller} continue {task_id}")
         account = flask_login.current_user
-        args = AppQueueManager.appQueueManagerDict.pop(task_id+"-args")
+        args = AppQueueManager.appQueueManagerDict.pop(task_id + "-args")
         logging.info(f"{config.zhangling_log_controller} 请求内容 {args}")
         streaming = True
         args["task_id"] = task_id
