@@ -156,6 +156,12 @@ class BaseAppGenerator:
                     if isinstance(message, Mapping | dict):
                         yield f"data: {json.dumps(message)}\n\n"
                     else:
-                        yield f"event: {message}\n\n"
+                        if isinstance(message,str):
+                            if "data: " in message:
+                                yield f"{message}\n\n"
+                            else:
+                                yield f"event: {message}\n\n"
+                        else:
+                            yield f"event: {message}\n\n"
 
             return gen()

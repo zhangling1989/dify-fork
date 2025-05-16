@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Optional
 ## zhangling code start
 import logging
+import core.config as config
 ## zhangling code end
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -216,9 +217,10 @@ class AppQueueManager:
         Check if task is stopped
         :return:
         """
-        generate_paused_message_cache_key = AppQueueManager._generate_paused_message_cache_key(task_id)
-        result = redis_client.setex(generate_paused_message_cache_key,600,message) ## zhangling  600秒过期
-        return result
+        AppQueueManager.add_appQueueManagerDict(task_id+"-message",message)
+        # generate_paused_message_cache_key = AppQueueManager._generate_paused_message_cache_key(task_id)
+        # result = redis_client.setex(generate_paused_message_cache_key,600,message) ## zhangling  600秒过期
+        # return result
 
 
     @classmethod
@@ -258,7 +260,7 @@ class AppQueueManager:
         if paused_cache_key is not None:
             generate_paused_message_cache_key = AppQueueManager._generate_paused_message_cache_key(task_id)
             text = redis_client.get(generate_paused_message_cache_key)
-            logging.info(f"{text}")
+            logging.info(f"{config.zhangling_log_core} 已生成的文本 {text}")
             if text is not None:
                 if task_id in cls.appQueueManagerDict:
                     queue = cls.appQueueManagerDict.pop(task_id)

@@ -1,3 +1,7 @@
+## zhangling code start
+import logging
+import core.config as config
+## zhangling code end
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
@@ -495,9 +499,14 @@ class WorkflowBasedAppRunner(AppRunner):
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
+            task_id = self.application_generate_entity.task_id
+            logging.info(f"{config.zhangling_log_core} task_id {task_id}")
+            msg = ""
+            if task_id in AppQueueManager.appQueueManagerDict:
+                msg = AppQueueManager.appQueueManagerDict.pop(task_id)
             self._publish_event( ## zhangling 发送生成文本内容
                 QueueTextChunkEvent(
-                    text=event.chunk_content,
+                    text=msg + event.chunk_content,
                     from_variable_selector=event.from_variable_selector,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
